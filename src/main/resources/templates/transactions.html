@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Transactions')}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container">
+    <div class="page-head">
+        <h1>Transactions</h1>
+        <a class="button" th:href="@{/transactions/new}">Add transaction</a>
+    </div>
+
+    <p class="flash" role="status" th:if="${message}" th:text="${message}"></p>
+
+    <p class="muted" th:if="${transactions.isEmpty()}">No transactions yet. Add the first one.</p>
+    <div class="table-scroll" th:unless="${transactions.isEmpty()}">
+    <table>
+        <thead>
+        <tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th class="num">Amount</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="t : ${transactions}">
+            <td th:text="${#temporals.format(t.occurredOn(), 'dd MMM yyyy')}"></td>
+            <td th:text="${t.type().label}"></td>
+            <td>
+                <span th:text="${t.category().label}"></span>
+                <span class="muted small" th:if="${t.recurring()}">· recurring</span>
+            </td>
+            <td>
+                <span th:text="${t.description()}"></span>
+                <span class="muted small" th:if="${t.investorName() != null}" th:text="'Investor: ' + ${t.investorName()}"></span>
+                <span class="muted small" th:if="${t.equityPct() != null}"
+                      th:text="${t.equityPct()} + '% equity · post-money valuation ' + ${@inr.format(t.postMoneyValuationInr())}"></span>
+                <span class="muted small" th:if="${t.sharesIssued() != null}"
+                      th:text="${@inr.shares(t.sharesIssued())} + ' new shares'"></span>
+            </td>
+            <td class="num" th:classappend="${t.type().name() == 'EXPENSE'} ? 'out' : 'in'"
+                th:text="${(t.type().name() == 'EXPENSE' ? '−' : '+') + @inr.exact(t.amountInr())}"></td>
+            <td class="row-actions"><a th:href="@{/transactions/{id}/edit(id=${t.id()})}" th:aria-label="'Edit ' + ${t.category().label} + ' on ' + ${#temporals.format(t.occurredOn(), 'dd MMM yyyy')}">Edit</a></td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+</main>
+</body>
+</html>

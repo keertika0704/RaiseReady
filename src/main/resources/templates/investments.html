@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Investments')}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container">
+    <h1>Investments</h1>
+
+    <!-- Bento: who owns the company (equity only; grey is what the founders still hold) beside the cap table, rounds underneath. -->
+    <div class="bento">
+    <section th:replace="~{fragments/charts :: donutCard(title='Who owns the company', subtitle='Equity held by each investor. Grey is what the founders still hold.', center=${equity.centreText()}, caption='founders', column='Holder', empty='No equity has been sold yet.', segments=${equity.segments()}, slices=${equity.slices()}, showShare=false)}"></section>
+
+    <section class="cap-table">
+        <h2>Cap table</h2>
+        <p class="muted">
+            Shares held by each person, and their share of the company right now.
+            <span th:if="${capTable.currentValuationInr() != null}" th:text="'Current valuation: ' + ${@inr.format(capTable.currentValuationInr())} + ' (after the latest round).'"></span>
+        </p>
+        <div class="table-scroll">
+        <table>
+            <thead>
+            <tr><th>Holder</th><th class="num">Shares</th><th class="num">Ownership</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="h : ${capTable.holdings()}">
+                <td th:text="${h.name()}"></td>
+                <td class="num" th:text="${@inr.shares(h.shares())}"></td>
+                <td class="num" th:text="${h.pct()} + '%'"></td>
+            </tr>
+            </tbody>
+            <tfoot>
+            <tr><th>Total</th><th class="num" th:text="${@inr.shares(capTable.totalShares())}"></th><th class="num">100%</th></tr>
+            </tfoot>
+        </table>
+        </div>
+    </section>
+    </div>
+
+    <h2 class="rounds-heading">Rounds</h2>
+    <div class="table-scroll">
+    <table>
+        <thead>
+        <tr><th>Date</th><th>Investor</th><th>Valuation</th><th>Invested</th><th>Equity</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${investments}">
+            <td th:text="${#temporals.format(i.investedOn, 'dd MMM yyyy')}"></td>
+            <td th:text="${i.investorName}"></td>
+            <td th:text="${@inr.format(i.valuationInr)}"></td>
+            <td th:text="${@inr.format(i.amountInr)}"></td>
+            <td th:text="${i.equityPct} + '%'"></td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+</main>
+<script th:src="@{/js/charts.js}"></script>
+</body>
+</html>

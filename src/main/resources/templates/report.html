@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Report')}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container">
+    <div class="page-head">
+        <div>
+            <h1 th:text="${report.companyName()} + ' report'">Report</h1>
+            <p class="muted" th:text="(${report.founderView()} ? 'Founder report' : 'Investor report') + ' · ' + ${#temporals.format(report.generatedOn(), 'dd MMM yyyy')}"></p>
+        </div>
+        <a class="button" th:href="@{/report.pdf}" download>Download PDF</a>
+    </div>
+
+    <section th:if="${report.founderView()}">
+        <h2 class="report-heading">Key metrics</h2>
+        <p class="muted">Burn and MRR cover the last 30 days.</p>
+        <div class="cards">
+            <div class="card"><span>Cash</span><strong th:text="${@inr.format(report.metrics().cash())}"></strong></div>
+            <div class="card"><span>Monthly burn</span><strong th:text="${@inr.format(report.metrics().monthlyBurn())}"></strong></div>
+            <div class="card"><span>Runway</span><strong th:text="${report.metrics().profitable()} ? 'Profitable' : ${report.metrics().runwayMonths()} + ' months'"></strong></div>
+            <div class="card"><span>MRR</span><strong th:text="${@inr.format(report.metrics().mrr())}"></strong><small class="muted" th:text="${report.metrics().activeSubscriptions()} + ' active subscriptions'"></small></div>
+        </div>
+    </section>
+
+    <section>
+        <h2 class="report-heading">Valuation</h2>
+        <div class="cards">
+            <div class="card"><span>Current valuation</span><strong th:text="${report.currentValuationInr() != null} ? ${@inr.format(report.currentValuationInr())} : '—'"></strong>
+                <small class="muted" th:if="${report.currentValuationInr() != null}">after the latest round</small></div>
+            <div class="card"><span>Funding rounds</span><strong th:text="${report.rounds()}"></strong></div>
+        </div>
+    </section>
+
+    <section th:unless="${report.founderView()}">
+        <th:block th:if="${report.position() != null}">
+            <h2 class="report-heading" th:text="'Viewing as ' + ${report.position().name()}">Viewing as</h2>
+            <div class="cards">
+                <div class="card"><span>Total invested</span><strong th:text="${@inr.format(report.position().totalInvestedInr())}"></strong></div>
+                <div class="card"><span>Equity</span><strong th:text="${report.position().equityPct()} + '%'"></strong></div>
+                <div class="card"><span>Current value</span><strong th:text="${report.position().currentValueInr() != null} ? ${@inr.format(report.position().currentValueInr())} : '—'"></strong></div>
+            </div>
+        </th:block>
+        <th:block th:if="${report.position() == null}">
+            <h2 class="report-heading">Your position</h2>
+            <p class="muted">No one has invested yet, so there are no investor numbers to show.</p>
+        </th:block>
+    </section>
+
+    <section class="cap-table">
+        <h2>Cap table</h2>
+        <p class="muted">Shares held by each person, and their share of the company right now.</p>
+        <div class="table-scroll">
+        <table>
+            <thead>
+            <tr><th>Holder</th><th class="num">Shares</th><th class="num">Ownership</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="h : ${report.capTable().holdings()}">
+                <td th:text="${h.name()}"></td>
+                <td class="num" th:text="${@inr.shares(h.shares())}"></td>
+                <td class="num" th:text="${h.pct()} + '%'"></td>
+            </tr>
+            </tbody>
+            <tfoot>
+            <tr><th>Total</th><th class="num" th:text="${@inr.shares(report.capTable().totalShares())}"></th><th class="num">100%</th></tr>
+            </tfoot>
+        </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

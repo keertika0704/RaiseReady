@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Overview')}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container">
+    <h1 th:text="${companyName}">Company</h1>
+    <p class="muted" th:text="${viewMode.name() == 'FOUNDER'} ? 'Founder view: what you have raised and given away.' : 'Investor view: how the company has been valued.'"></p>
+
+    <!-- Founder bento: the hero tile (total raised) beside the equity and cash tiles, then the two charts side by side. -->
+    <div class="bento" th:if="${viewMode.name() == 'FOUNDER'}"
+         th:with="inSubtitle=${@inr.format(metrics.cash()) + ' in hand after ' + @inr.format(moneyOutTotal) + ' spent'}, inCenter=${@inr.format(moneyInTotal)}, outCenter=${@inr.format(moneyOutTotal)}">
+        <div class="card"><span>Total raised</span><strong th:text="${@inr.format(totalRaised)}"></strong></div>
+        <div class="card"><span>Equity sold</span><strong th:text="${equitySold} + '%'"></strong></div>
+        <div class="card"><span>Founders keep</span><strong th:text="${100 - equitySold} + '%'"></strong></div>
+        <div class="card"><span>Cash</span><strong th:text="${@inr.format(metrics.cash())}"></strong></div>
+        <div class="card"><span>Monthly burn</span><strong th:text="${@inr.format(metrics.monthlyBurn())}"></strong></div>
+        <div class="card"><span>Runway</span><strong th:text="${metrics.profitable()} ? 'Profitable' : ${metrics.runwayMonths()} + ' months'"></strong></div>
+        <div class="card"><span>MRR</span><strong th:text="${@inr.format(metrics.mrr())}"></strong></div>
+        <div class="card"><span>Active subscriptions</span><strong th:text="${metrics.activeSubscriptions()}"></strong></div>
+        <!-- Money in: every investor or lender by name, and each kind of revenue. Cash in hand is that minus what went out. -->
+        <section th:replace="~{fragments/charts :: donutCard(title='Money in', subtitle=${inSubtitle}, center=${inCenter}, caption='received', column='Source', empty='No money has come in yet.', segments=${moneyIn}, slices=${moneyInDonut}, showShare=true)}"></section>
+        <!-- Money out: spending by expense category. -->
+        <section th:replace="~{fragments/charts :: donutCard(title='Money out', subtitle='Where the money has gone', center=${outCenter}, caption='spent', column='Category', empty='No spending yet.', segments=${moneyOut}, slices=${moneyOutDonut}, showShare=true)}"></section>
+    </div>
+
+    <div th:if="${viewMode.name() == 'INVESTOR' and position != null}">
+        <h2 class="viewing-heading" th:text="'Viewing as ' + ${position.name()}">Viewing as</h2>
+        <div class="cards">
+            <div class="card"><span>Total invested</span><strong th:text="${@inr.format(position.totalInvestedInr())}"></strong></div>
+            <div class="card"><span>Equity</span><strong th:text="${position.equityPct()} + '%'"></strong></div>
+            <div class="card"><span>Current value</span><strong th:text="${position.currentValueInr() != null} ? ${@inr.format(position.currentValueInr())} : '—'"></strong></div>
+        </div>
+    </div>
+    <p class="muted" th:if="${viewMode.name() == 'INVESTOR' and position == null}">No one has invested yet, so there are no investor numbers to show.</p>
+
+    <div class="cards" th:unless="${viewMode.name() == 'FOUNDER'}">
+        <div class="card"><span>Current valuation</span><strong th:text="${latestValuation != null} ? ${@inr.format(latestValuation)} : '—'"></strong></div>
+        <div class="card"><span>Funding rounds</span><strong th:text="${rounds}"></strong></div>
+    </div>
+</main>
+<script th:src="@{/js/charts.js}" th:if="${viewMode.name() == 'FOUNDER'}"></script>
+</body>
+</html>

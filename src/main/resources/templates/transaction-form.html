@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${heading})}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container narrow">
+    <h1 th:text="${heading}">Add transaction</h1>
+
+    <p class="note" th:if="${sharesLocked}">Shares were issued for this investment, so only the date and description can be changed.</p>
+
+    <!-- novalidate: the script below shows the quick checks in our own wording. The server checks everything again. -->
+    <form id="transaction-form" class="form" method="post" th:action="@{${action}}" th:object="${form}" novalidate>
+        <div class="field">
+            <label for="type">Type</label>
+            <select id="type" th:field="*{type}">
+                <option value="">Choose a type</option>
+                <option th:each="t : ${types}" th:value="${t}" th:text="${t.label}"></option>
+            </select>
+            <span class="error" data-error-for="type" th:text="${#fields.hasErrors('type')} ? ${#fields.errors('type')[0]}"></span>
+        </div>
+
+        <div class="field">
+            <label for="category">Category</label>
+            <select id="category" th:field="*{category}">
+                <option value="">Choose a category</option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="${c.label}" th:data-type="${c.type}"></option>
+            </select>
+            <span class="error" data-error-for="category" th:text="${#fields.hasErrors('category')} ? ${#fields.errors('category')[0]}"></span>
+        </div>
+
+        <div class="field">
+            <label for="date">Date</label>
+            <input id="date" type="date" th:field="*{date}" th:max="${today}">
+            <span class="error" data-error-for="date" th:text="${#fields.hasErrors('date')} ? ${#fields.errors('date')[0]}"></span>
+        </div>
+
+        <div class="field">
+            <label for="amount">Amount (₹)</label>
+            <input id="amount" type="text" inputmode="decimal" th:field="*{amount}" placeholder="0.00" autocomplete="off">
+            <span class="error" data-error-for="amount" th:text="${#fields.hasErrors('amount')} ? ${#fields.errors('amount')[0]}"></span>
+        </div>
+
+        <div class="field" id="equity-field">
+            <label for="preMoneyValuation">Pre-money valuation (₹)</label>
+            <input id="preMoneyValuation" type="text" inputmode="decimal" th:field="*{preMoneyValuation}" placeholder="What the company was worth before this money" autocomplete="off">
+            <span class="hint" id="valuation-preview" aria-live="polite">Enter the amount and the pre-money valuation to see the equity.</span>
+            <span class="error" data-error-for="preMoneyValuation" th:text="${#fields.hasErrors('preMoneyValuation')} ? ${#fields.errors('preMoneyValuation')[0]}"></span>
+        </div>
+
+        <div class="field" id="investor-field">
+            <label for="investorName">Investor name</label>
+            <input id="investorName" type="text" th:field="*{investorName}" maxlength="200" autocomplete="off">
+            <span class="hint">Needed for an equity investment.</span>
+            <span class="error" data-error-for="investorName" th:text="${#fields.hasErrors('investorName')} ? ${#fields.errors('investorName')[0]}"></span>
+        </div>
+
+        <div class="field">
+            <label for="description">Description <span class="muted">(optional)</span></label>
+            <textarea id="description" rows="2" th:field="*{description}"></textarea>
+            <span class="error" data-error-for="description" th:text="${#fields.hasErrors('description')} ? ${#fields.errors('description')[0]}"></span>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="button">Save</button>
+            <a th:href="@{/transactions}">Cancel</a>
+        </div>
+    </form>
+</main>
+
+<script th:inline="none">
+    // Browser-side help. Without it the form still works: the server applies every rule again and shows its own errors.
+    (function () {
+        var form = document.getElementById('transaction-form');
+        var type = document.getElementById('type');
+        var category = document.getElementById('category');
+        var investorField = document.getElementById('investor-field');
+        var investor = document.getElementById('investorName');
+        var equityField = document.getElementById('equity-field');
+        var preMoney = document.getElementById('preMoneyValuation');
+        var preview = document.getElementById('valuation-preview');
+        var amount = document.getElementById('amount');
+        var date = document.getElementById('date');
+        var description = document.getElementById('description');
+
+        // Keep the full category list aside so it can be refilled whenever the type changes.
+        var placeholder = category.options[0];
+        var allCategories = Array.prototype.slice.call(category.options, 1);
+        var selectedCategory = category.value;
+
+        function fillCategories() {
+            var wanted = allCategories.filter(function (o) { return o.dataset.type === type.value; });
+            category.replaceChildren.apply(category, [placeholder].concat(wanted));
+            category.value = wanted.some(function (o) { return o.value === selectedCategory; }) ? selectedCategory : '';
+            category.disabled = !type.value;
+            investorField.hidden = type.value !== 'FUNDING';
+            showEquity();
+        }
+
+        // Equity only applies to an equity investment.
+        function showEquity() {
+            equityField.hidden = category.value !== 'EQUITY_INVESTMENT';
+            updatePreview();
+        }
+
+        // post-money = pre-money + money put in; equity = money put in / post-money. Same sums the server does.
+        function rupees(v) {
+            if (v >= 1e7) return '₹' + parseFloat((v / 1e7).toFixed(2)) + ' Cr';
+            if (v >= 1e5) return '₹' + parseFloat((v / 1e5).toFixed(2)) + ' lakh';
+            return '₹' + Math.round(v).toLocaleString('en-IN');
+        }
+        function updatePreview() {
+            var a = parseFloat(amount.value), p = parseFloat(preMoney.value);
+            preview.textContent = (a > 0 && p > 0)
+                ? 'Post-money valuation: ' + rupees(p + a) + ' · this investment buys ' + parseFloat((a * 100 / (p + a)).toFixed(2)) + '% of the company'
+                : 'Enter the amount and the pre-money valuation to see the equity.';
+        }
+        amount.addEventListener('input', updatePreview);
+        preMoney.addEventListener('input', updatePreview);
+
+        type.addEventListener('change', function () { selectedCategory = ''; fillCategories(); });
+        category.addEventListener('change', function () { selectedCategory = category.value; showEquity(); });
+        fillCategories();
+
+        function show(field, message) {
+            form.querySelector('[data-error-for="' + field + '"]').textContent = message || '';
+        }
+
+        form.addEventListener('submit', function (event) {
+            var problems = {};
+            var today = new Date();
+            var todayText = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+            if (!type.value) problems.type = 'Pick a type.';
+            if (!category.value) problems.category = 'Pick a category.';
+            if (!date.value) problems.date = 'Enter a date.';
+            else if (date.value > todayText) problems.date = "The date can't be in the future.";
+            var amountText = amount.value.trim();
+            if (amountText === '') problems.amount = 'Enter an amount.';
+            else if (!/^\d+(\.\d+)?$/.test(amountText)) problems.amount = 'Enter the amount as a number, like 2500 or 2500.50.';
+            else if (!(parseFloat(amountText) > 0)) problems.amount = 'The amount must be more than 0.';
+            if (description.value.length > 200) problems.description = 'Keep the description to 200 characters or less.';
+            if (type.value === 'FUNDING' && category.value === 'EQUITY_INVESTMENT' && investor.value.trim() === '') {
+                problems.investorName = "Enter the investor's name for an equity investment.";
+            }
+
+            if (category.value === 'EQUITY_INVESTMENT') {
+                var preMoneyText = preMoney.value.trim();
+                if (preMoneyText === '') problems.preMoneyValuation = 'Enter the pre-money valuation for an equity investment.';
+                else if (!/^\d+(\.\d+)?$/.test(preMoneyText)) problems.preMoneyValuation = 'Enter the pre-money valuation as a number, like 8000000.';
+                else if (!(parseFloat(preMoneyText) > 0)) problems.preMoneyValuation = 'The pre-money valuation must be more than 0.';
+            }
+
+            ['type', 'category', 'date', 'amount', 'preMoneyValuation', 'investorName', 'description'].forEach(function (f) { show(f, problems[f]); });
+            if (Object.keys(problems).length) {
+                event.preventDefault();
+                var first = form.querySelector('[data-error-for="' + Object.keys(problems)[0] + '"]');
+                first.parentElement.querySelector('select, input, textarea').focus();
+            }
+        });
+    })();
+</script>
+</body>
+</html>

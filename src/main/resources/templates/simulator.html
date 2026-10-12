@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Simulator')}"></head>
+<body th:class="${viewMode.name() == 'INVESTOR'} ? 'mode-investor' : 'mode-founder'">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<main class="container">
+    <h1>Round simulator</h1>
+    <p class="note">Try a pretend investment to see who would own what. Nothing here is saved: your real cap table does not change.</p>
+
+    <!-- A GET form: asking a question saves nothing, and the answer can be bookmarked or shared. -->
+    <form class="form narrow" method="get" th:action="@{/simulator}" th:object="${form}" novalidate>
+        <div class="field">
+            <label for="amount">Investment amount (₹)</label>
+            <input id="amount" name="amount" type="text" inputmode="decimal" th:value="*{amount}" placeholder="2000000" autocomplete="off">
+            <span class="error" th:text="${#fields.hasErrors('amount')} ? ${#fields.errors('amount')[0]}"></span>
+        </div>
+        <div class="field">
+            <label for="preMoneyValuation">Pre-money valuation (₹)</label>
+            <input id="preMoneyValuation" name="preMoneyValuation" type="text" inputmode="decimal" th:value="*{preMoneyValuation}" placeholder="8000000" autocomplete="off">
+            <span class="hint">What the company would be worth before this money.</span>
+            <span class="error" th:text="${#fields.hasErrors('preMoneyValuation')} ? ${#fields.errors('preMoneyValuation')[0]}"></span>
+        </div>
+        <div class="actions">
+            <button type="submit" class="button">Simulate</button>
+        </div>
+    </form>
+
+    <section class="sim-result" th:if="${simulation != null}">
+        <h2>If this round happened</h2>
+        <p class="sim-summary muted" th:text="'Post-money valuation: ' + ${@inr.format(simulation.dilution().postMoneyValuationInr())}
+            + ' · the new investor would buy ' + ${simulation.dilution().equityPct()} + '% with '
+            + ${@inr.shares(simulation.dilution().newShares())} + ' new shares.'"></p>
+        <div class="table-scroll">
+        <table>
+            <thead>
+            <tr><th>Holder</th><th class="num">Shares now</th><th class="num">Ownership now</th><th class="num">Shares after</th><th class="num">Ownership after</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${simulation.rows()}" th:classappend="${r.pretend()} ? 'pretend'">
+                <td th:text="${r.pretend()} ? ${r.name()} + ' (pretend)' : ${r.name()}"></td>
+                <td class="num" th:text="${@inr.shares(r.sharesBefore())}"></td>
+                <td class="num" th:text="${r.pctBefore()} + '%'"></td>
+                <td class="num" th:text="${@inr.shares(r.sharesAfter())}"></td>
+                <td class="num" th:classappend="${!r.pretend() and r.pctAfter().compareTo(r.pctBefore()) < 0} ? 'diluted'" th:text="${r.pctAfter()} + '%'"></td>
+            </tr>
+            </tbody>
+            <tfoot>
+            <tr><th>Total</th><th class="num" th:text="${@inr.shares(simulation.totalBefore())}"></th><th class="num">100%</th>
+                <th class="num" th:text="${@inr.shares(simulation.totalAfter())}"></th><th class="num">100%</th></tr>
+            </tfoot>
+        </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

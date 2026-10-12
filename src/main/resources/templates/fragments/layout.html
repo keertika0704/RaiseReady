@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · RaiseReady'">RaiseReady</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<!-- Shared page chrome, included on every page: <header th:replace="~{fragments/layout :: topbar}"></header>
+     It is a side navigation plus a thin strip along the top that holds the Founder / Investor toggle. -->
+<th:block th:fragment="topbar">
+    <aside class="sidebar">
+        <a class="brand" th:href="@{/}">RaiseReady</a>
+        <nav class="nav" aria-label="Main">
+            <a th:href="@{/}" th:classappend="${currentPath == '/'} ? 'active'" th:aria-current="${currentPath == '/'} ? 'page'">Overview</a>
+            <a th:href="@{/investments}" th:classappend="${currentPath.startsWith('/investments')} ? 'active'" th:aria-current="${currentPath.startsWith('/investments')} ? 'page'">Investments</a>
+            <a th:href="@{/report}" th:classappend="${currentPath.startsWith('/report')} ? 'active'" th:aria-current="${currentPath.startsWith('/report')} ? 'page'">Report</a>
+            <a th:if="${viewMode.name() == 'FOUNDER'}" th:href="@{/transactions}" th:classappend="${currentPath.startsWith('/transactions')} ? 'active'" th:aria-current="${currentPath.startsWith('/transactions')} ? 'page'">Transactions</a>
+            <a th:if="${viewMode.name() == 'FOUNDER'}" th:href="@{/simulator}" th:classappend="${currentPath.startsWith('/simulator')} ? 'active'" th:aria-current="${currentPath.startsWith('/simulator')} ? 'page'">Simulator</a>
+        </nav>
+    </aside>
+    <header class="topstrip">
+        <!-- Investor mode only: whose numbers to show. Changing it posts straight away; the button is for browsers without scripts. -->
+        <form class="viewing-as" method="post" th:action="@{/viewing-as}" th:if="${!investorNames.isEmpty()}">
+            <label for="viewing-as">Viewing as</label>
+            <select id="viewing-as" name="investor" onchange="this.form.submit()">
+                <option th:each="n : ${investorNames}" th:value="${n}" th:text="${n}" th:selected="${n == viewingAs}"></option>
+            </select>
+            <noscript><button type="submit">Go</button></noscript>
+        </form>
+        <form class="mode-toggle" method="post" th:action="@{/mode}">
+            <button type="submit" name="mode" value="FOUNDER"
+                    th:classappend="${viewMode.name() == 'FOUNDER'} ? 'active'"
+                    th:attr="aria-pressed=${viewMode.name() == 'FOUNDER'}">Founder</button>
+            <button type="submit" name="mode" value="INVESTOR"
+                    th:classappend="${viewMode.name() == 'INVESTOR'} ? 'active'"
+                    th:attr="aria-pressed=${viewMode.name() == 'INVESTOR'}">Investor</button>
+        </form>
+    </header>
+</th:block>
+</body>
+</html>
